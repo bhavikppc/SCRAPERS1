@@ -174,17 +174,14 @@ async function downloadFile(content, format) {
   const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
   const filename = `tabs-export-${timestamp}.${format === 'markdown' ? 'md' : format}`;
 
-  const blob = new Blob([content], {
-    type: format === 'json' ? 'application/json' : 'text/plain'
-  });
-  const url = URL.createObjectURL(blob);
+  // Create a data URL instead of blob URL (service workers don't support URL.createObjectURL)
+  const base64Content = btoa(unescape(encodeURIComponent(content)));
+  const mimeType = format === 'json' ? 'application/json' : 'text/plain';
+  const dataUrl = `data:${mimeType};base64,${base64Content}`;
 
   await chrome.downloads.download({
-    url: url,
+    url: dataUrl,
     filename: filename,
     saveAs: true
   });
-
-  // Clean up the blob URL after a delay
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
