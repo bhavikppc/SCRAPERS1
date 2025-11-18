@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Tabs Export Settings</title>
+  <style>
+    body {
+      width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      color: #333;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      margin: 0 0 24px 0;
+      font-size: 24px;
+      font-weight: 600;
+      color: #1a73e8;
+      border-bottom: 2px solid #e0e0e0;
+      padding-bottom: 12px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section h2 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #5f6368;
+    }
+
+    .option {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+    }
+
+    label {
+      display: flex;
+      align-items: flex-start;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+      margin: 4px 12px 0 0;
+      cursor: pointer;
+    }
+
+    .label-text {
+      flex: 1;
+    }
+
+    .label-title {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .label-description {
+      font-size: 12px;
+      color: #5f6368;
+      line-height: 1.5;
+    }
+
+    .radio-group {
+      margin-top: 8px;
+    }
+
+    select {
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 13px;
+      background: white;
+      cursor: pointer;
+    }
+
+    button {
+      padding: 10px 24px;
+      border: none;
+      background: #1a73e8;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #1557b0;
+    }
+
+    .status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .status.success {
+      background: #e6f4ea;
+      color: #137333;
+      border: 1px solid #c6e1c6;
+    }
+
+    .status.hidden {
+      display: none;
+    }
+
+    .footer {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e0e0e0;
+      text-align: center;
+      font-size: 12px;
+      color: #5f6368;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Tabs Export Settings</h1>
+
+    <div class="section">
+      <h2>Default Export Options</h2>
+
+      <div class="option">
+        <label>
+          <input type="checkbox" id="includeContent">
+          <div class="label-text">
+            <div class="label-title">Include page content</div>
+            <div class="label-description">Extract and include page content in exports</div>
+          </div>
+        </label>
+      </div>
+
+      <div class="option">
+        <label>
+          <input type="checkbox" id="useReadability">
+          <div class="label-text">
+            <div class="label-title">Use cleaned content (Readability)</div>
+            <div class="label-description">Apply Readability.js to extract clean, article-focused content</div>
+          </div>
+        </label>
+      </div>
+
+      <div class="option">
+        <label>
+          <input type="checkbox" id="convertToMarkdown">
+          <div class="label-text">
+            <div class="label-title">Convert HTML to Markdown</div>
+            <div class="label-description">Convert page HTML elements to Markdown format</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Default Scope</h2>
+      <div class="radio-group">
+        <div class="option">
+          <label>
+            <input type="radio" name="scope" value="all">
+            <div class="label-text">
+              <div class="label-title">All windows</div>
+              <div class="label-description">Export tabs from all Chrome windows</div>
+            </div>
+          </label>
+        </div>
+        <div class="option">
+          <label>
+            <input type="radio" name="scope" value="current">
+            <div class="label-text">
+              <div class="label-title">Current window only</div>
+              <div class="label-description">Export tabs from the active window</div>
+            </div>
+          </label>
+        </div>
+        <div class="option">
+          <label>
+            <input type="radio" name="scope" value="active">
+            <div class="label-text">
+              <div class="label-title">Active tab only</div>
+              <div class="label-description">Export only the currently active tab</div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Default Export Format</h2>
+      <select id="defaultFormat">
+        <option value="markdown">Markdown (.md)</option>
+        <option value="json">JSON (.json)</option>
+        <option value="csv">CSV (.csv)</option>
+        <option value="text">Plain Text (.txt)</option>
+      </select>
+    </div>
+
+    <button id="saveSettings">Save Settings</button>
+
+    <div id="status" class="status hidden"></div>
+
+    <div class="footer">
+      <p>Settings are automatically synced across your Chrome browsers</p>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

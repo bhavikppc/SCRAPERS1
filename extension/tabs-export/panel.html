@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Export to Markdown</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      color: #333;
+      background: #f5f5f5;
+    }
+
+    .header {
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a73e8;
+    }
+
+    .description {
+      color: #5f6368;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .section {
+      background: white;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .section h3 {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #5f6368;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      padding: 8px 16px;
+      border: 2px solid #1a73e8;
+      background: #1a73e8;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      background: #1557b0;
+      border-color: #1557b0;
+    }
+
+    button.secondary {
+      background: white;
+      color: #1a73e8;
+    }
+
+    button.secondary:hover {
+      background: #f8f9fa;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .output {
+      background: white;
+      padding: 12px;
+      border-radius: 6px;
+      margin-top: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .output h3 {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: #5f6368;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 8px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+      font-size: 12px;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+
+    .status {
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .status.success {
+      background: #e6f4ea;
+      color: #137333;
+      border: 1px solid #c6e1c6;
+    }
+
+    .status.error {
+      background: #fce8e6;
+      color: #c5221f;
+      border: 1px solid #f6aea9;
+    }
+
+    .status.info {
+      background: #e8f0fe;
+      color: #1967d2;
+      border: 1px solid #d2e3fc;
+    }
+
+    .status.hidden {
+      display: none;
+    }
+
+    .instructions {
+      background: #e8f0fe;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      border: 1px solid #d2e3fc;
+    }
+
+    .instructions p {
+      margin: 0 0 8px 0;
+      color: #1967d2;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .instructions p:last-child {
+      margin-bottom: 0;
+    }
+
+    .instructions strong {
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Export Selected Element to Markdown</h2>
+    <p class="description">Convert selected HTML elements to Markdown format</p>
+  </div>
+
+  <div class="instructions">
+    <p><strong>How to use:</strong></p>
+    <p>1. Select an element in the Elements panel</p>
+    <p>2. Click "Convert Selected" to convert it to Markdown</p>
+    <p>3. Copy or download the result</p>
+  </div>
+
+  <div class="section">
+    <h3>Actions</h3>
+    <div class="button-group">
+      <button id="convertSelected">Convert Selected Element</button>
+      <button id="convertBody" class="secondary">Convert Entire Body</button>
+    </div>
+    <div id="status" class="status hidden"></div>
+  </div>
+
+  <div class="output">
+    <h3>Markdown Output</h3>
+    <textarea id="markdownOutput" placeholder="Converted markdown will appear here..." readonly></textarea>
+    <div class="button-group" style="margin-top: 8px;">
+      <button id="copyMarkdown" class="secondary">Copy to Clipboard</button>
+      <button id="downloadMarkdown" class="secondary">Download as .md</button>
+    </div>
+  </div>
+
+  <script src="panel.js"></script>
+</body>
+</html>

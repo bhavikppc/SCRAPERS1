@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Tabs Export",
+  "version": "1.0.0",
+  "description": "Export all open tabs with content to CSV, Markdown, JSON, or Text",
+  "permissions": [
+    "tabs",
+    "scripting",
+    "downloads",
+    "storage",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Export Tabs"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+E",
+        "mac": "Command+Shift+E"
+      },
+      "description": "Open tabs export popup"
+    },
+    "quick_export": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+X",
+        "mac": "Command+Shift+X"
+      },
+      "description": "Quick export with default settings"
+    }
+  },
+  "devtools_page": "devtools.html",
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
