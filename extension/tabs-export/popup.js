@@ -4,6 +4,7 @@
 const includeContentCheckbox = document.getElementById('includeContent');
 const useReadabilityCheckbox = document.getElementById('useReadability');
 const convertToMarkdownCheckbox = document.getElementById('convertToMarkdown');
+const captureScreenshotCheckbox = document.getElementById('captureScreenshot');
 const scopeRadios = document.querySelectorAll('input[name="scope"]');
 const exportMarkdownBtn = document.getElementById('exportMarkdown');
 const exportJsonBtn = document.getElementById('exportJson');
@@ -18,12 +19,14 @@ chrome.storage.sync.get({
   includeContent: true,
   useReadability: false,
   convertToMarkdown: false,
+  captureScreenshot: false,
   defaultScope: 'all',
   defaultFormat: 'markdown'
 }, (items) => {
   includeContentCheckbox.checked = items.includeContent;
   useReadabilityCheckbox.checked = items.useReadability;
   convertToMarkdownCheckbox.checked = items.convertToMarkdown;
+  captureScreenshotCheckbox.checked = items.captureScreenshot;
 
   scopeRadios.forEach(radio => {
     if (radio.value === items.defaultScope) {
@@ -41,6 +44,7 @@ function getOptions() {
     includeContent: includeContentCheckbox.checked,
     useReadability: useReadabilityCheckbox.checked,
     convertToMarkdown: convertToMarkdownCheckbox.checked,
+    captureScreenshot: captureScreenshotCheckbox.checked,
     scope: scope
   };
 
@@ -130,6 +134,10 @@ useReadabilityCheckbox.addEventListener('change', () => {
 
 convertToMarkdownCheckbox.addEventListener('change', () => {
   chrome.storage.sync.set({ convertToMarkdown: convertToMarkdownCheckbox.checked });
+});
+
+captureScreenshotCheckbox.addEventListener('change', () => {
+  chrome.storage.sync.set({ captureScreenshot: captureScreenshotCheckbox.checked });
 });
 
 scopeRadios.forEach(radio => {
