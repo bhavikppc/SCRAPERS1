@@ -34,14 +34,18 @@ chrome.storage.sync.get({
 
 // Get current options
 function getOptions() {
-  const scope = Array.from(scopeRadios).find(r => r.checked).value;
+  const checkedRadio = Array.from(scopeRadios).find(r => r.checked);
+  const scope = checkedRadio ? checkedRadio.value : 'all';
 
-  return {
+  const options = {
     includeContent: includeContentCheckbox.checked,
     useReadability: useReadabilityCheckbox.checked,
     convertToMarkdown: convertToMarkdownCheckbox.checked,
     scope: scope
   };
+
+  console.log('Current options:', options);
+  return options;
 }
 
 // Show status message
@@ -59,6 +63,7 @@ function showStatus(message, type = 'info', duration = 3000) {
 // Export with specified format
 async function exportTabs(format) {
   const options = getOptions();
+  console.log('Exporting tabs with options:', options);
   showStatus('Collecting tabs...', 'info', 0);
 
   try {
@@ -67,6 +72,8 @@ async function exportTabs(format) {
       format: format,
       options: options
     });
+
+    console.log('Export response:', response);
 
     if (response.success) {
       showStatus(`✓ Exported ${response.tabCount} tabs to ${format.toUpperCase()}`, 'success');

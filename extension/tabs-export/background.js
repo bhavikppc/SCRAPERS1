@@ -84,10 +84,12 @@ async function getTabsByScope(scope) {
     case 'all':
       return await chrome.tabs.query({});
     case 'current':
-      const currentWindow = await chrome.windows.getCurrent();
-      return await chrome.tabs.query({ windowId: currentWindow.id });
+      // Get the last focused window (not the popup window!)
+      const windows = await chrome.windows.getAll({ populate: true, windowTypes: ['normal'] });
+      const focusedWindow = windows.find(w => w.focused) || windows[0];
+      return focusedWindow ? focusedWindow.tabs : [];
     case 'active':
-      return await chrome.tabs.query({ active: true, currentWindow: true });
+      return await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     default:
       throw new Error('Unknown scope: ' + scope);
   }
@@ -97,11 +99,13 @@ async function getTabsByScope(scope) {
 async function collectTabsData(tabs, options) {
   const tabsData = [];
 
+  console.log('Collecting data from', tabs.length, 'tabs with options:', options);
+
   for (const tab of tabs) {
     const tabData = {
       url: tab.url,
       title: tab.title,
-      domain: new URL(tab.url).hostname,
+      domain: getDomain(tab.url),
       windowId: tab.windowId,
       index: tab.index,
       content: null
@@ -110,7 +114,10 @@ async function collectTabsData(tabs, options) {
     // Skip special URLs
     if (tab.url.startsWith('chrome://') ||
         tab.url.startsWith('chrome-extension://') ||
-        tab.url.startsWith('about:')) {
+        tab.url.startsWith('about:') ||
+        tab.url.startsWith('edge://') ||
+        tab.url.startsWith('file://')) {
+      console.log('Skipping special URL:', tab.url);
       tabsData.push(tabData);
       continue;
     }
@@ -118,12 +125,16 @@ async function collectTabsData(tabs, options) {
     // Get page content if requested
     if (options.includeContent) {
       try {
+        console.log(`Extracting content from tab ${tab.id}: ${tab.title}`);
         const contentData = await getTabContent(tab.id, options);
         tabData.content = contentData;
+        console.log(`✓ Content extracted from ${tab.title}:`, contentData?.text?.substring(0, 100));
       } catch (error) {
-        console.error(`Error getting content for tab ${tab.id}:`, error);
+        console.error(`✗ Error getting content for tab ${tab.id}:`, error);
         tabData.content = { error: error.message };
       }
+    } else {
+      console.log('Skipping content extraction (includeContent is false)');
     }
 
     tabsData.push(tabData);
@@ -132,16 +143,34 @@ async function collectTabsData(tabs, options) {
   return tabsData;
 }
 
+// Helper function to safely extract domain
+function getDomain(url) {
+  try {
+    return new URL(url).hostname;
+  } catch (error) {
+    return 'unknown';
+  }
+}
+
 // Get content from a specific tab
 async function getTabContent(tabId, options) {
   try {
-    // Inject content script
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content.js']
-    });
+    // Check if tab exists and is ready
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.status !== 'complete') {
+      console.warn(`Tab ${tabId} not loaded yet, waiting...`);
+      await waitForTabLoad(tabId);
+    }
 
-    // If using readability, also inject readability library
+    // If converting to markdown, inject turndown library first
+    if (options.convertToMarkdown) {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['lib/turndown.js']
+      });
+    }
+
+    // If using readability, inject readability library
     if (options.useReadability) {
       await chrome.scripting.executeScript({
         target: { tabId },
@@ -149,13 +178,14 @@ async function getTabContent(tabId, options) {
       });
     }
 
-    // If converting to markdown, inject turndown library
-    if (options.convertToMarkdown) {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: ['lib/turndown.js']
-      });
-    }
+    // Inject content script
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content.js']
+    });
+
+    // Small delay to ensure scripts are loaded
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Send message to content script to extract content
     const response = await chrome.tabs.sendMessage(tabId, {
@@ -165,8 +195,29 @@ async function getTabContent(tabId, options) {
 
     return response;
   } catch (error) {
+    console.error('Content extraction error details:', error);
     throw new Error(`Failed to extract content: ${error.message}`);
   }
+}
+
+// Wait for tab to finish loading
+function waitForTabLoad(tabId, timeout = 10000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      reject(new Error('Timeout waiting for tab to load'));
+    }, timeout);
+
+    function listener(updatedTabId, changeInfo) {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        clearTimeout(timer);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    }
+
+    chrome.tabs.onUpdated.addListener(listener);
+  });
 }
 
 // Download file
