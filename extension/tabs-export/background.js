@@ -46,20 +46,26 @@ async function handleExportTabs(format, options, copyToClipboard = false) {
     // Collect tab data
     const tabsData = await collectTabsData(tabs, options);
 
-    // Format data
+    // Format data with options
     let content;
+    const formatOptions = {
+      maxContentLength: 0, // No truncation
+      includeFullContent: true,
+      maxPreviewLength: 500
+    };
+
     switch (format) {
       case 'markdown':
-        content = formatAsMarkdown(tabsData);
+        content = formatAsMarkdown(tabsData, formatOptions);
         break;
       case 'json':
         content = formatAsJson(tabsData);
         break;
       case 'csv':
-        content = formatAsCsv(tabsData);
+        content = formatAsCsv(tabsData, formatOptions);
         break;
       case 'text':
-        content = formatAsText(tabsData);
+        content = formatAsText(tabsData, formatOptions);
         break;
       default:
         throw new Error('Unknown format: ' + format);
@@ -223,12 +229,32 @@ function waitForTabLoad(tabId, timeout = 10000) {
 // Download file
 async function downloadFile(content, format) {
   const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  const filename = `tabs-export-${timestamp}.${format === 'markdown' ? 'md' : format}`;
+
+  // Map format to proper file extension
+  const extensionMap = {
+    'markdown': 'md',
+    'json': 'json',
+    'csv': 'csv',
+    'text': 'txt'
+  };
+
+  // Map format to proper MIME type
+  const mimeTypeMap = {
+    'markdown': 'text/markdown',
+    'json': 'application/json',
+    'csv': 'text/csv',
+    'text': 'text/plain'
+  };
+
+  const extension = extensionMap[format] || format;
+  const mimeType = mimeTypeMap[format] || 'text/plain';
+  const filename = `tabs-export-${timestamp}.${extension}`;
+
+  console.log(`Downloading file: ${filename} (${content.length} bytes, ${mimeType})`);
 
   // Create a data URL instead of blob URL (service workers don't support URL.createObjectURL)
   const base64Content = btoa(unescape(encodeURIComponent(content)));
-  const mimeType = format === 'json' ? 'application/json' : 'text/plain';
-  const dataUrl = `data:${mimeType};base64,${base64Content}`;
+  const dataUrl = `data:${mimeType};charset=utf-8;base64,${base64Content}`;
 
   await chrome.downloads.download({
     url: dataUrl,
