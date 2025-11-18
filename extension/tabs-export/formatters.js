@@ -41,6 +41,19 @@ export function formatAsMarkdown(tabsData, options = {}) {
 
           markdown += `${contentText}\n`;
         }
+
+        // Add extracted links
+        if (tab.content.links && tab.content.links.length > 0) {
+          markdown += `\n#### Links Found on Page (${tab.content.links.length})\n\n`;
+          tab.content.links.forEach((link, idx) => {
+            if (link.text) {
+              markdown += `${idx + 1}. [${escapeMarkdown(link.text)}](${link.url})\n`;
+            } else {
+              markdown += `${idx + 1}. <${link.url}>\n`;
+            }
+          });
+          markdown += `\n`;
+        }
       } else if (tab.content && tab.content.error) {
         markdown += `\n_Content extraction failed: ${tab.content.error}_\n`;
       }
@@ -76,8 +89,8 @@ export function formatAsCsv(tabsData, options = {}) {
   const maxPreviewLength = options.maxPreviewLength || 500;
 
   const headers = includeFullContent
-    ? ['Window', 'Index', 'Title', 'URL', 'Domain', 'Full Content', 'Content Length']
-    : ['Window', 'Index', 'Title', 'URL', 'Domain', 'Content Preview', 'Has Content'];
+    ? ['Window', 'Index', 'Title', 'URL', 'Domain', 'Full Content', 'Content Length', 'Links Count', 'All Links']
+    : ['Window', 'Index', 'Title', 'URL', 'Domain', 'Content Preview', 'Has Content', 'Links Count', 'All Links'];
 
   let csv = headers.join(',') + '\n';
 
@@ -98,6 +111,19 @@ export function formatAsCsv(tabsData, options = {}) {
       contentInfo = tab.content && tab.content.text ? 'Yes' : 'No';
     }
 
+    // Format links for CSV
+    const linksCount = tab.content && tab.content.links ? tab.content.links.length : 0;
+    let allLinks = '';
+    if (tab.content && tab.content.links && tab.content.links.length > 0) {
+      // Create a list of links separated by semicolons
+      allLinks = tab.content.links.map(link => {
+        if (link.text) {
+          return `${link.text} (${link.url})`;
+        }
+        return link.url;
+      }).join('; ');
+    }
+
     const row = [
       tab.windowId,
       tab.index,
@@ -105,7 +131,9 @@ export function formatAsCsv(tabsData, options = {}) {
       escapeCsv(tab.url),
       escapeCsv(tab.domain),
       contentField,
-      contentInfo
+      contentInfo,
+      linksCount,
+      escapeCsv(allLinks)
     ];
 
     csv += row.join(',') + '\n';
@@ -153,6 +181,20 @@ export function formatAsText(tabsData, options = {}) {
         }
 
         text += `${'-'.repeat(80)}\n`;
+
+        // Add extracted links
+        if (tab.content.links && tab.content.links.length > 0) {
+          text += `\nLINKS FOUND ON PAGE (${tab.content.links.length}):\n`;
+          text += `${'-'.repeat(80)}\n`;
+          tab.content.links.forEach((link, idx) => {
+            if (link.text) {
+              text += `${idx + 1}. ${link.text}\n   ${link.url}\n`;
+            } else {
+              text += `${idx + 1}. ${link.url}\n`;
+            }
+          });
+          text += `${'-'.repeat(80)}\n`;
+        }
       } else if (tab.content && tab.content.error) {
         text += `\n[Content extraction failed: ${tab.content.error}]\n`;
       }
