@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Export Tabs</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Export Tabs</h1>
+
+    <div class="section">
+      <h3>Export Options</h3>
+      <div class="option">
+        <label>
+          <input type="checkbox" id="includeContent" checked>
+          Include page content
+        </label>
+      </div>
+      <div class="option">
+        <label>
+          <input type="checkbox" id="useReadability">
+          Use cleaned content (Readability)
+        </label>
+      </div>
+      <div class="option">
+        <label>
+          <input type="checkbox" id="convertToMarkdown">
+          Convert HTML to Markdown
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Scope</h3>
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="scope" value="all" checked>
+          All windows
+        </label>
+        <label>
+          <input type="radio" name="scope" value="current">
+          Current window only
+        </label>
+        <label>
+          <input type="radio" name="scope" value="active">
+          Active tab only
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Export Format</h3>
+      <div class="button-group">
+        <button id="exportMarkdown" class="format-btn primary">
+          📄 Markdown
+        </button>
+        <button id="exportJson" class="format-btn">
+          📋 JSON
+        </button>
+        <button id="exportCsv" class="format-btn">
+          📊 CSV
+        </button>
+        <button id="exportText" class="format-btn">
+          📝 Text
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <button id="copyToClipboard" class="secondary-btn">
+        📋 Copy to Clipboard
+      </button>
+    </div>
+
+    <div id="status" class="status hidden"></div>
+
+    <div class="footer">
+      <a href="#" id="openSettings">Settings</a>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

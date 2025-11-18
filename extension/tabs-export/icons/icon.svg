@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#1a73e8" rx="16"/>
+  <g fill="white">
+    <!-- Document icon -->
+    <rect x="32" y="24" width="64" height="80" rx="4" fill="white"/>
+    <rect x="32" y="24" width="64" height="80" rx="4" fill="none" stroke="#1a73e8" stroke-width="4"/>
+
+    <!-- Lines representing text -->
+    <line x1="42" y1="40" x2="86" y2="40" stroke="#1a73e8" stroke-width="3" stroke-linecap="round"/>
+    <line x1="42" y1="52" x2="86" y2="52" stroke="#1a73e8" stroke-width="3" stroke-linecap="round"/>
+    <line x1="42" y1="64" x2="72" y2="64" stroke="#1a73e8" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- Export arrow -->
+    <path d="M 64 72 L 64 90 M 56 82 L 64 90 L 72 82" stroke="#1a73e8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>
