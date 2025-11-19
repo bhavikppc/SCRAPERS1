@@ -4,6 +4,7 @@
 const includeContentCheckbox = document.getElementById('includeContent');
 const useReadabilityCheckbox = document.getElementById('useReadability');
 const convertToMarkdownCheckbox = document.getElementById('convertToMarkdown');
+const captureScreenshotCheckbox = document.getElementById('captureScreenshot');
 const scopeRadios = document.querySelectorAll('input[name="scope"]');
 const exportMarkdownBtn = document.getElementById('exportMarkdown');
 const exportJsonBtn = document.getElementById('exportJson');
@@ -18,12 +19,14 @@ chrome.storage.sync.get({
   includeContent: true,
   useReadability: false,
   convertToMarkdown: false,
+  captureScreenshot: false,
   defaultScope: 'all',
   defaultFormat: 'markdown'
 }, (items) => {
   includeContentCheckbox.checked = items.includeContent;
   useReadabilityCheckbox.checked = items.useReadability;
   convertToMarkdownCheckbox.checked = items.convertToMarkdown;
+  captureScreenshotCheckbox.checked = items.captureScreenshot;
 
   scopeRadios.forEach(radio => {
     if (radio.value === items.defaultScope) {
@@ -34,14 +37,19 @@ chrome.storage.sync.get({
 
 // Get current options
 function getOptions() {
-  const scope = Array.from(scopeRadios).find(r => r.checked).value;
+  const checkedRadio = Array.from(scopeRadios).find(r => r.checked);
+  const scope = checkedRadio ? checkedRadio.value : 'all';
 
-  return {
+  const options = {
     includeContent: includeContentCheckbox.checked,
     useReadability: useReadabilityCheckbox.checked,
     convertToMarkdown: convertToMarkdownCheckbox.checked,
+    captureScreenshot: captureScreenshotCheckbox.checked,
     scope: scope
   };
+
+  console.log('Current options:', options);
+  return options;
 }
 
 // Show status message
@@ -59,6 +67,7 @@ function showStatus(message, type = 'info', duration = 3000) {
 // Export with specified format
 async function exportTabs(format) {
   const options = getOptions();
+  console.log('Exporting tabs with options:', options);
   showStatus('Collecting tabs...', 'info', 0);
 
   try {
@@ -67,6 +76,8 @@ async function exportTabs(format) {
       format: format,
       options: options
     });
+
+    console.log('Export response:', response);
 
     if (response.success) {
       showStatus(`✓ Exported ${response.tabCount} tabs to ${format.toUpperCase()}`, 'success');
@@ -123,6 +134,10 @@ useReadabilityCheckbox.addEventListener('change', () => {
 
 convertToMarkdownCheckbox.addEventListener('change', () => {
   chrome.storage.sync.set({ convertToMarkdown: convertToMarkdownCheckbox.checked });
+});
+
+captureScreenshotCheckbox.addEventListener('change', () => {
+  chrome.storage.sync.set({ captureScreenshot: captureScreenshotCheckbox.checked });
 });
 
 scopeRadios.forEach(radio => {

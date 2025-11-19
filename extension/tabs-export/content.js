@@ -16,6 +16,9 @@ async function extractContent(options) {
     let content;
     let html = null;
 
+    // Extract all links from the page
+    const links = extractAllLinks();
+
     if (options.useReadability && typeof Readability !== 'undefined') {
       // Use Readability.js for cleaned content
       const documentClone = document.cloneNode(true);
@@ -43,7 +46,8 @@ async function extractContent(options) {
           excerpt: article.excerpt,
           byline: article.byline,
           length: article.length,
-          siteName: article.siteName
+          siteName: article.siteName,
+          links: links
         };
       }
     }
@@ -72,12 +76,70 @@ async function extractContent(options) {
     return {
       text: content,
       title: document.title,
-      length: content.length
+      length: content.length,
+      links: links
     };
   } catch (error) {
     console.error('Content extraction error:', error);
     throw error;
   }
+}
+
+// Extract all links from the page
+function extractAllLinks() {
+  const links = [];
+  const anchorElements = document.querySelectorAll('a[href]');
+  const baseUrl = window.location.origin;
+
+  anchorElements.forEach((anchor) => {
+    try {
+      let href = anchor.getAttribute('href');
+      if (!href) return;
+
+      // Skip certain types of links
+      if (href.startsWith('javascript:') ||
+          href.startsWith('mailto:') ||
+          href.startsWith('tel:') ||
+          href === '#') {
+        return;
+      }
+
+      // Convert relative URLs to absolute
+      let absoluteUrl;
+      if (href.startsWith('http://') || href.startsWith('https://')) {
+        absoluteUrl = href;
+      } else if (href.startsWith('//')) {
+        absoluteUrl = window.location.protocol + href;
+      } else if (href.startsWith('/')) {
+        absoluteUrl = baseUrl + href;
+      } else if (href.startsWith('#')) {
+        absoluteUrl = window.location.href.split('#')[0] + href;
+      } else {
+        // Relative path
+        const currentPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+        absoluteUrl = baseUrl + currentPath + href;
+      }
+
+      // Get link text
+      const linkText = anchor.textContent.trim() || anchor.title || '';
+
+      // Add to links array (avoid duplicates)
+      const linkObj = {
+        url: absoluteUrl,
+        text: linkText.substring(0, 200) // Limit text length
+      };
+
+      // Check if this exact URL already exists
+      if (!links.some(l => l.url === absoluteUrl)) {
+        links.push(linkObj);
+      }
+    } catch (error) {
+      console.warn('Error processing link:', error);
+    }
+  });
+
+  console.log(`Extracted ${links.length} links from page`);
+  return links;
 }
 
 // Helper function to clean text

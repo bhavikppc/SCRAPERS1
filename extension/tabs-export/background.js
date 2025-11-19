@@ -46,20 +46,26 @@ async function handleExportTabs(format, options, copyToClipboard = false) {
     // Collect tab data
     const tabsData = await collectTabsData(tabs, options);
 
-    // Format data
+    // Format data with options
     let content;
+    const formatOptions = {
+      maxContentLength: 0, // No truncation
+      includeFullContent: true,
+      maxPreviewLength: 500
+    };
+
     switch (format) {
       case 'markdown':
-        content = formatAsMarkdown(tabsData);
+        content = formatAsMarkdown(tabsData, formatOptions);
         break;
       case 'json':
         content = formatAsJson(tabsData);
         break;
       case 'csv':
-        content = formatAsCsv(tabsData);
+        content = formatAsCsv(tabsData, formatOptions);
         break;
       case 'text':
-        content = formatAsText(tabsData);
+        content = formatAsText(tabsData, formatOptions);
         break;
       default:
         throw new Error('Unknown format: ' + format);
@@ -84,10 +90,12 @@ async function getTabsByScope(scope) {
     case 'all':
       return await chrome.tabs.query({});
     case 'current':
-      const currentWindow = await chrome.windows.getCurrent();
-      return await chrome.tabs.query({ windowId: currentWindow.id });
+      // Get the last focused window (not the popup window!)
+      const windows = await chrome.windows.getAll({ populate: true, windowTypes: ['normal'] });
+      const focusedWindow = windows.find(w => w.focused) || windows[0];
+      return focusedWindow ? focusedWindow.tabs : [];
     case 'active':
-      return await chrome.tabs.query({ active: true, currentWindow: true });
+      return await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     default:
       throw new Error('Unknown scope: ' + scope);
   }
@@ -97,11 +105,13 @@ async function getTabsByScope(scope) {
 async function collectTabsData(tabs, options) {
   const tabsData = [];
 
+  console.log('Collecting data from', tabs.length, 'tabs with options:', options);
+
   for (const tab of tabs) {
     const tabData = {
       url: tab.url,
       title: tab.title,
-      domain: new URL(tab.url).hostname,
+      domain: getDomain(tab.url),
       windowId: tab.windowId,
       index: tab.index,
       content: null
@@ -110,7 +120,10 @@ async function collectTabsData(tabs, options) {
     // Skip special URLs
     if (tab.url.startsWith('chrome://') ||
         tab.url.startsWith('chrome-extension://') ||
-        tab.url.startsWith('about:')) {
+        tab.url.startsWith('about:') ||
+        tab.url.startsWith('edge://') ||
+        tab.url.startsWith('file://')) {
+      console.log('Skipping special URL:', tab.url);
       tabsData.push(tabData);
       continue;
     }
@@ -118,11 +131,28 @@ async function collectTabsData(tabs, options) {
     // Get page content if requested
     if (options.includeContent) {
       try {
+        console.log(`Extracting content from tab ${tab.id}: ${tab.title}`);
         const contentData = await getTabContent(tab.id, options);
         tabData.content = contentData;
+        console.log(`✓ Content extracted from ${tab.title}:`, contentData?.text?.substring(0, 100));
       } catch (error) {
-        console.error(`Error getting content for tab ${tab.id}:`, error);
+        console.error(`✗ Error getting content for tab ${tab.id}:`, error);
         tabData.content = { error: error.message };
+      }
+    } else {
+      console.log('Skipping content extraction (includeContent is false)');
+    }
+
+    // Capture screenshot if requested
+    if (options.captureScreenshot) {
+      try {
+        console.log(`Capturing screenshot from tab ${tab.id}: ${tab.title}`);
+        const screenshotData = await captureFullPageScreenshot(tab.id);
+        tabData.screenshot = screenshotData;
+        console.log(`✓ Screenshot captured from ${tab.title}`);
+      } catch (error) {
+        console.error(`✗ Error capturing screenshot for tab ${tab.id}:`, error);
+        tabData.screenshot = { error: error.message };
       }
     }
 
@@ -132,16 +162,34 @@ async function collectTabsData(tabs, options) {
   return tabsData;
 }
 
+// Helper function to safely extract domain
+function getDomain(url) {
+  try {
+    return new URL(url).hostname;
+  } catch (error) {
+    return 'unknown';
+  }
+}
+
 // Get content from a specific tab
 async function getTabContent(tabId, options) {
   try {
-    // Inject content script
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ['content.js']
-    });
+    // Check if tab exists and is ready
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.status !== 'complete') {
+      console.warn(`Tab ${tabId} not loaded yet, waiting...`);
+      await waitForTabLoad(tabId);
+    }
 
-    // If using readability, also inject readability library
+    // If converting to markdown, inject turndown library first
+    if (options.convertToMarkdown) {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['lib/turndown.js']
+      });
+    }
+
+    // If using readability, inject readability library
     if (options.useReadability) {
       await chrome.scripting.executeScript({
         target: { tabId },
@@ -149,13 +197,14 @@ async function getTabContent(tabId, options) {
       });
     }
 
-    // If converting to markdown, inject turndown library
-    if (options.convertToMarkdown) {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        files: ['lib/turndown.js']
-      });
-    }
+    // Inject content script
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content.js']
+    });
+
+    // Small delay to ensure scripts are loaded
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Send message to content script to extract content
     const response = await chrome.tabs.sendMessage(tabId, {
@@ -165,23 +214,123 @@ async function getTabContent(tabId, options) {
 
     return response;
   } catch (error) {
+    console.error('Content extraction error details:', error);
     throw new Error(`Failed to extract content: ${error.message}`);
   }
+}
+
+// Wait for tab to finish loading
+function waitForTabLoad(tabId, timeout = 10000) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener);
+      reject(new Error('Timeout waiting for tab to load'));
+    }, timeout);
+
+    function listener(updatedTabId, changeInfo) {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        clearTimeout(timer);
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
+    }
+
+    chrome.tabs.onUpdated.addListener(listener);
+  });
 }
 
 // Download file
 async function downloadFile(content, format) {
   const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  const filename = `tabs-export-${timestamp}.${format === 'markdown' ? 'md' : format}`;
+
+  // Map format to proper file extension
+  const extensionMap = {
+    'markdown': 'md',
+    'json': 'json',
+    'csv': 'csv',
+    'text': 'txt'
+  };
+
+  // Map format to proper MIME type
+  const mimeTypeMap = {
+    'markdown': 'text/markdown',
+    'json': 'application/json',
+    'csv': 'text/csv',
+    'text': 'text/plain'
+  };
+
+  const extension = extensionMap[format] || format;
+  const mimeType = mimeTypeMap[format] || 'text/plain';
+  const filename = `tabs-export-${timestamp}.${extension}`;
+
+  console.log(`Downloading file: ${filename} (${content.length} bytes, ${mimeType})`);
 
   // Create a data URL instead of blob URL (service workers don't support URL.createObjectURL)
   const base64Content = btoa(unescape(encodeURIComponent(content)));
-  const mimeType = format === 'json' ? 'application/json' : 'text/plain';
-  const dataUrl = `data:${mimeType};base64,${base64Content}`;
+  const dataUrl = `data:${mimeType};charset=utf-8;base64,${base64Content}`;
 
   await chrome.downloads.download({
     url: dataUrl,
     filename: filename,
     saveAs: true
   });
+}
+
+// Capture full-page screenshot using Chrome DevTools Protocol
+async function captureFullPageScreenshot(tabId) {
+  let debuggeeId = { tabId: tabId };
+
+  try {
+    // Attach debugger to the tab
+    await chrome.debugger.attach(debuggeeId, '1.3');
+
+    // Get page metrics to determine full page size
+    const metricsResult = await chrome.debugger.sendCommand(debuggeeId, 'Page.getLayoutMetrics');
+    const { contentSize } = metricsResult;
+
+    // Set device metrics to capture full page
+    await chrome.debugger.sendCommand(debuggeeId, 'Emulation.setDeviceMetricsOverride', {
+      width: Math.ceil(contentSize.width),
+      height: Math.ceil(contentSize.height),
+      deviceScaleFactor: 1,
+      mobile: false
+    });
+
+    // Capture screenshot
+    const screenshotResult = await chrome.debugger.sendCommand(debuggeeId, 'Page.captureScreenshot', {
+      format: 'jpeg',
+      quality: 90,
+      captureBeyondViewport: true
+    });
+
+    // Get tab info for filename
+    const tab = await chrome.tabs.get(tabId);
+    const timestamp = new Date().toISOString().split('T')[0];
+    const safeTitle = tab.title.replace(/[^a-z0-9]/gi, '_').substring(0, 50);
+    const filename = `screenshot-${safeTitle}-${timestamp}.jpg`;
+
+    // Download the screenshot
+    await chrome.downloads.download({
+      url: `data:image/jpeg;base64,${screenshotResult.data}`,
+      filename: filename,
+      saveAs: false
+    });
+
+    return {
+      success: true,
+      filename: filename,
+      width: contentSize.width,
+      height: contentSize.height
+    };
+  } catch (error) {
+    console.error('Screenshot capture error:', error);
+    throw error;
+  } finally {
+    // Always detach debugger
+    try {
+      await chrome.debugger.detach(debuggeeId);
+    } catch (e) {
+      console.warn('Error detaching debugger:', e);
+    }
+  }
 }
